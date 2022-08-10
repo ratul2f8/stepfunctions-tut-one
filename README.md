@@ -11,4 +11,6 @@ Sample request payload for the step function:
 
 2) Change the arn of the two tables (books and users) in references of the serverless.yml file
 
+3) Deploy changes: ``npx sls deploy``
+
 <img src="./diagram.png">
