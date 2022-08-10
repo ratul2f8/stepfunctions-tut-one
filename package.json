@@ -1,0 +1,12 @@
+{
+  "name": "tut-one",
+  "version": "1.0.0",
+  "main": "index.js",
+  "license": "MIT",
+  "devDependencies": {
+    "serverless-step-functions": "^3.8.0"
+  },
+  "dependencies": {
+    "aws-sdk": "^2.1190.0"
+  }
+}

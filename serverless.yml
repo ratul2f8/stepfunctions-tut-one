@@ -1,0 +1,90 @@
+service: stepfunc-tut-one
+provider:
+  name: aws
+  runtime: nodejs16.x
+  region: ap-south-1
+  iamRoleStatements:
+    - Effect: Allow
+      Action: dynamodb:*
+      Resource: arn:aws:dynamodb:ap-south-1:678889802216:table/books
+    - Effect: Allow
+      Action: dynamodb:*
+      Resource: arn:aws:dynamodb:ap-south-1:678889802216:table/users
+plugins:
+  - serverless-step-functions
+functions:
+  checkInventory:
+    handler: checkInventory.checkInventory
+  calculateTotal:
+    handler: calculateTotal.calculateTotal
+  redeemPoints:
+    handler: redeemPoints.redeemPoints
+  billCustomer:
+    handler: billCustomer.billCustomer
+  restorePoints:
+    handler: restorePoints.restorePoints
+
+stepFunctions:
+  stateMachines:
+    storeCheckoutFlow:
+      name: storeCheckoutFlow
+      definition:
+        StartAt: checkInventory
+        States:
+          checkInventory:
+            Type: Task
+            Resource:
+              Fn::GetAtt: [checkInventory, Arn]
+            Catch:
+              - ErrorEquals: ["INVALID_REQUEST"]
+                Next: invalidRequestError
+              - ErrorEquals: ["States.ALL"]
+                Next: bookError
+            ResultPath: "$.result_book"
+            Next: calculateTotal
+          calculateTotal:
+            Type: Task
+            Resource:
+              Fn::GetAtt: [calculateTotal, Arn]
+            Next: isRedeemNeeded
+          isRedeemNeeded:
+            Type: Choice
+            Choices:
+              - Variable: $.pointsRedeemed
+                NumericGreaterThan: 0
+                Next: redeemPoints
+            Default: billCustomer
+          redeemPoints:
+            Type: Task
+            Resource:
+              Fn::GetAtt: [redeemPoints, Arn]
+            Catch:
+              - ErrorEquals: [States.ALL]
+                Next: pointsRedeemError
+            Next: billCustomer
+          billCustomer:
+            Type: Task
+            Resource:
+              Fn::GetAtt: [billCustomer, Arn]
+            Retry:
+              - ErrorEquals: [States.ALL]
+                MaxAttempts: 3
+            Catch:
+              - ErrorEquals: [States.ALL]
+                ResultPath: "$.error"
+                Next: restorePoints
+            End: true
+          invalidRequestError:
+            Type: Pass
+            End: true
+          bookError:
+            Type: Pass
+            End: true
+          pointsRedeemError:
+            Type: Pass
+            End: true
+          restorePoints:
+            Type: Task
+            Resource:
+              Fn::GetAtt: [restorePoints, Arn]
+            End: true
